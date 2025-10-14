@@ -1,0 +1,95 @@
+pipeline {
+  agent any
+
+  environment {
+    REGISTRY = "registry.example.com"                  // Replace with your Docker registry
+    FRONTEND_IMAGE = "${REGISTRY}/mern-frontend"
+    BACKEND_IMAGE  = "${REGISTRY}/mern-backend"
+    DOCKER_CREDENTIALS = 'DOCKERCREDS'                 // Jenkins credentials ID for Docker
+    KUBE_CREDENTIALS   = 'KUBECONFIG'                  // Jenkins credentials ID for kubeconfig (optional)
+    HELM_RELEASE = 'mern-app'
+    HELM_CHART_DIR = 'helm-chart/mern-chart'
+    GIT_FE_REPO = 'https://github.com/yourorg/mern-frontend.git'
+    GIT_BE_REPO = 'https://github.com/yourorg/mern-backend.git'
+  }
+
+  stages {
+
+    stage('Checkout Repositories') {
+      steps {
+        script {
+          dir('frontend') {
+            git url: env.GIT_FE_REPO, branch: 'main'
+          }
+          dir('backend') {
+            git url: env.GIT_BE_REPO, branch: 'main'
+          }
+        }
+      }
+    }
+
+    stage('Build Frontend Image') {
+      steps {
+        dir('frontend') {
+          sh '''
+            npm ci
+            npm run build
+            docker build -t ${FRONTEND_IMAGE}:${BUILD_NUMBER} -f Dockerfile .
+          '''
+        }
+      }
+    }
+
+    stage('Build Backend Image') {
+      steps {
+        dir('backend') {
+          sh '''
+            npm ci
+            docker build -t ${BACKEND_IMAGE}:${BUILD_NUMBER} -f Dockerfile .
+          '''
+        }
+      }
+    }
+
+    stage('Push Docker Images') {
+      steps {
+        withCredentials([usernamePassword(credentialsId: DOCKER_CREDENTIALS, usernameVariable: 'USER', passwordVariable: 'PASS')]) {
+          sh '''
+            echo $PASS | docker login -u $USER --password-stdin ${REGISTRY}
+            docker push ${FRONTEND_IMAGE}:${BUILD_NUMBER}
+            docker push ${BACKEND_IMAGE}:${BUILD_NUMBER}
+          '''
+        }
+      }
+    }
+
+    stage('Deploy to Kubernetes with Helm') {
+      steps {
+        withCredentials([string(credentialsId: KUBE_CREDENTIALS, variable: 'KUBECONFIG_CONTENT')]) {
+          sh '''
+            echo "$KUBECONFIG_CONTENT" > kubeconfig
+            export KUBECONFIG=$PWD/kubeconfig
+
+            helm upgrade --install ${HELM_RELEASE} ${HELM_CHART_DIR} \
+              --set image.frontend.repository=${FRONTEND_IMAGE} \
+              --set image.frontend.tag=${BUILD_NUMBER} \
+              --set image.backend.repository=${BACKEND_IMAGE} \
+              --set image.backend.tag=${BUILD_NUMBER}
+          '''
+        }
+      }
+    }
+  }
+
+  post {
+    success {
+      echo "✅ Deployment successful: ${HELM_RELEASE}"
+    }
+    failure {
+      echo "❌ Build or deployment failed."
+    }
+    always {
+      cleanWs()
+    }
+  }
+}
