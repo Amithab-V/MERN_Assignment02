@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "mern.fullname" . }}-backend
+spec:
+  type: {{ .Values.service.backend.type | default "ClusterIP" }}
+  selector:
+    app: {{ include "mern.fullname" . }}-backend
+  ports:
+    - port: {{ .Values.service.backend.port | default 5000 }}
+      targetPort: 5000
