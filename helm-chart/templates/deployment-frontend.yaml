@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "mern.fullname" . }}-frontend
+spec:
+  replicas: {{ .Values.replicaCountFrontend }}
+  selector:
+    matchLabels:
+      app: {{ include "mern.fullname" . }}-frontend
+  template:
+    metadata:
+      labels:
+        app: {{ include "mern.fullname" . }}-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: "{{ .Values.image.frontend.repository }}:{{ .Values.image.frontend.tag }}"
+          ports:
+            - containerPort: 80
+          env:
+            - name: REACT_APP_API_URL
+              value: "http://{{ include "mern.fullname" . }}-backend:5000"

@@ -1,0 +1,9 @@
+
+  volumeClaimTemplates:
+    - metadata:
+        name: mongo-pvc
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 5Gi

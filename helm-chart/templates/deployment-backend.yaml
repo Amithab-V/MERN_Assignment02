@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "mern.fullname" . }}-backend
+spec:
+  replicas: {{ .Values.replicaCountBackend }}
+  selector:
+    matchLabels:
+      app: {{ include "mern.fullname" . }}-backend
+  template:
+    metadata:
+      labels:
+        app: {{ include "mern.fullname" . }}-backend
+    spec:
+      containers:
+        - name: backend
+          image: "{{ .Values.image.backend.repository }}:{{ .Values.image.backend.tag }}"
+          ports:
+            - containerPort: 5000
+          env:
+            - name: MONGO_URI
+              value: "mongodb://{{ .Values.mongodb.rootUser }}:{{ .Values.mongodb.rootPassword }}@{{ include "mern.fullname" . }}-mongo-0.{{ include "mern.fullname" . }}-mongo:27017/{{ .Values.mongodb.database }}?authSource=admin"
