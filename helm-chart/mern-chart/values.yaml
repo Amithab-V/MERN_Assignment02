@@ -1,0 +1,25 @@
+replicaCountFrontend: 2
+replicaCountBackend: 2
+
+image:
+  frontend:
+    repository: REPLACE_WITH_FRONTEND_IMAGE
+    tag: latest
+  backend:
+    repository: REPLACE_WITH_BACKEND_IMAGE
+    tag: latest
+
+mongodb:
+  enabled: true
+  image: mongo:6.0
+  rootUser: admin
+  rootPassword: change-me
+  database: mernapp
+
+service:
+  frontend:
+    type: LoadBalancer
+    port: 80
+  backend:
+    type: ClusterIP
+    port: 5000
